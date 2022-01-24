@@ -1,0 +1,116 @@
+<!-- This part adds a first method to make it a bit tidyer -->
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Alpine Notes</title>
+
+        <link rel="stylesheet" href="app.css">
+
+        <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/@ryangjchandler/spruce@2.x.x/dist/spruce.umd.js"></script>
+    </head>
+    <body>
+        <div class="container mx-auto px-6 pt-12">
+            <div
+                class="border border-gray-300 rounded-md grid grid-cols-1 md:grid-cols-4 grid-flow-row"
+                x-data="{
+                    newNoteSkeleton () {
+                        return { id: Date.now(), body: '', updated_at: Date.now() }
+                    },
+    
+                    createEmptyNote () {
+                        const emptyNote = this.newNoteSkeleton()
+    
+                        Spruce.store('notes').data.push(emptyNote)
+                        Spruce.store('note').data = Spruce.store('notes').byId(emptyNote.id)
+                    }
+                }"
+                
+                x-init="
+                    Spruce.store('notes', {
+                        data: [newNoteSkeleton()],
+    
+                        latest () {
+                            return this.data.slice().sort((a, b) => b.updated_at - a.updated_at)
+                        },
+    
+                        byId (id) {
+                            return this.data.find(n => n.id === id)
+                        },
+    
+                        delete (id) {
+                            this.data = this.data.filter(n => n.id !== id)
+                        },
+    
+                        first () {
+                            return this.latest()[0]
+                        }
+                    }, true)
+    
+                    Spruce.store('note', {
+                        data: Spruce.store('notes').first(),
+                    })
+    
+                    $watch('$store.note.data.body', () => {
+                        Spruce.store('note').data.updated_at = Date.now()
+                    })
+    
+                    $watch('$store.notes.data', (notes) => {
+                        if (notes.length === 0) {
+                            createEmptyNote()
+                        }
+    
+                        if (notes.find(n => n.id === Spruce.store('note').data.id) === undefined) {
+                            Spruce.store('note').data = Spruce.store('notes').first()
+                        }
+                    })
+                "
+            >
+                <aside class="border-gray-300 border-b md:border-b-0 md:border-r col-span-1">
+                    <ul>
+                        <template x-for="note in $store.notes.latest()">
+                            <li class="py-2 grid grid-cols-4 items-center group" x-bind:class="{ 'bg-gray-100': note.id === $store.note.data.id }">
+                                <a href="#" class="col-span-3 block w-full py-3 px-6 transition-all duration-100 hover:pl-7" x-on:click.prevent="$store.note.data = note">
+                                    <h2 class="font-semibold truncate overflow-ellipsis" x-text="note.body.split('\n')[0] || 'Blank note'"></h2>
+                                    <div class="text-gray-600 text-sm truncate overflow-ellipsis" x-text="note.body || 'Blank note'"></div>
+                                </a>
+
+                                <div class="col-span-1 flex justify-end">
+                                    <a href="#" class="block p-3" x-on:click.prevent="$store.notes.delete(note.id)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="h-6 w-6 text-gray-500 opacity-0 group-hover:opacity-100">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </a>
+                                </div>
+
+                            </li>
+                        </template>
+                    </ul>
+
+                    <a href="#" class="block p-6 flex items-center transition-all duration-100 hover:pl-7" x-on:click.prevent="createEmptyNote">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        New note
+                    </a>
+                </aside>
+                <main class="p-6 col-span-3">
+                    <textarea
+                        name="body"
+                        id="body"
+                        class="bg-transparent w-full outline-none resize-y"
+                        placeholder="Type your note here..."
+                        x-model="$store.note.data.body"
+                        x-data="{ resize: () => { $el.style.height = '100%'; $el.style.height = $el.scrollHeight + 'px' } }"
+                        x-init="resize"
+                        x-on:input="resize"
+                        autofocus
+                    ></textarea>
+                </main>
+            </div>
+        </div>
+    </body>
+</html>
